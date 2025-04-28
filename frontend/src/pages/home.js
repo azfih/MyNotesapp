@@ -48,7 +48,7 @@ const Home = () => {
       <MoodTracker />
       {/* Image with Text and Time */}
       <div className="w-full max-w-4xl flex items-center">
-        <img src="/side-image.jpg" alt="Side Illustration" className="w-32 h-32 rounded-lg shadow-md" />
+        <img src="/wallpaper/stars.jpeg" alt="Side Illustration" className="w-32 h-32 rounded-lg shadow-md" />
         <div className="ml-6 flex-1">
           <p className="text-gray-700 text-lg font-medium">Cherish every moment and make today count! 🌸</p>
         </div>

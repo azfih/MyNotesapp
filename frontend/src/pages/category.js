@@ -44,22 +44,6 @@ const CategoryPage = () => {
       }
     }, 1000);
     
-    // In your real app with backend:
-    // fetch(`/api/notes?category=${category}`)
-    //   .then((res) => {
-    //     if (!res.ok) {
-    //       throw new Error("Failed to fetch notes");
-    //     }
-    //     return res.json();
-    //   })
-    //   .then((data) => {
-    //     setNotes(data);
-    //     setIsLoading(false);
-    //   })
-    //   .catch((err) => {
-    //     setError("Failed to load notes. Please try again.");
-    //     setIsLoading(false);
-    //   });
   }, [category]);
 
   const handleDeleteNote = (noteId) => {
@@ -72,19 +56,6 @@ const CategoryPage = () => {
       setError("Note deleted successfully!");
       setTimeout(() => setError(""), 3000);
       
-      // In your real app with backend:
-      // fetch(`/api/notes/${noteId}`, {
-      //   method: 'DELETE',
-      // })
-      //   .then(res => {
-      //     if (!res.ok) throw new Error("Failed to delete note");
-      //     setNotes(notes.filter(note => note._id !== noteId));
-      //     setError("Note deleted successfully!");
-      //     setTimeout(() => setError(""), 3000);
-      //   })
-      //   .catch(err => {
-      //     setError("Failed to delete note. Please try again.");
-      //   });
     }
   };
 
@@ -145,7 +116,7 @@ const CategoryPage = () => {
         <div className="text-center mt-8">
           <button 
             onClick={() => navigate("/create-note")} 
-            className="bg-pastel-blue px-6 py-3 rounded-lg shadow-md text-white font-semibold hover:bg-blue-500 transition duration-300"
+            className="bg-pastel-blue px-6 py-3 rounded-lg shadow-md text-black font-semibold hover:bg-blue-500 transition duration-300"
           >
             ➕ Create New Note
           </button>
