@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import axios from "axios";
 import Calendar from "react-calendar";
 import "react-calendar/dist/Calendar.css";
+import { useAuth } from "../pages/AuthApp";
 
 const moods = [
   { emoji: "😊", color: "#FFD700", label: "Happy" },
@@ -16,12 +17,38 @@ const MoodTracker = () => {
   const [moodData, setMoodData] = useState({});
   const [feedback, setFeedback] = useState({ message: "", type: "" });
   const [isLoading, setIsLoading] = useState(false);
+  
+  const { token } = useAuth();
+
+  // Helper function to format date consistently
+  const formatDateForAPI = (date) => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
+  // Create axios instance with auth headers
+  const apiClient = axios.create({
+    baseURL: "http://localhost:5000/api",
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json'
+    }
+  });
 
   useEffect(() => {
-    // Fetch mood data
+    if (!token) {
+      setFeedback({
+        message: "Please log in to track your moods.",
+        type: "error"
+      });
+      return;
+    }
+
     setIsLoading(true);
     
-    axios.get("http://localhost:5000/api/moods")
+    apiClient.get("/moods")
       .then((res) => {
         const moodsMap = {};
         res.data.forEach(({ date, moodEmoji, moodColor }) => {
@@ -31,16 +58,26 @@ const MoodTracker = () => {
         setIsLoading(false);
       })
       .catch((error) => {
+        console.error("Mood fetch error:", error);
         setFeedback({
-          message: "Failed to load mood data. Please try again.",
+          message: error.response?.data?.error || "Failed to load mood data. Please try again.",
           type: "error"
         });
         setIsLoading(false);
       });
-  }, []);
+  }, [token]);
 
   const handleMoodSelect = async (mood) => {
-    const formattedDate = selectedDate.toISOString().split("T")[0];
+    if (!token) {
+      setFeedback({
+        message: "Please log in to save your mood.",
+        type: "error"
+      });
+      return;
+    }
+
+    // Use the helper function to format date consistently
+    const formattedDate = formatDateForAPI(selectedDate);
     
     setIsLoading(true);
     setSelectedMood(mood);
@@ -50,7 +87,7 @@ const MoodTracker = () => {
       setMoodData((prev) => ({ ...prev, [formattedDate]: mood }));
       
       // Send to backend
-      await axios.post("http://localhost:5000/api/moods", {
+      await apiClient.post("/moods", {
         date: formattedDate,
         moodEmoji: mood.emoji,
         moodColor: mood.color,
@@ -61,13 +98,13 @@ const MoodTracker = () => {
         type: "success"
       });
       
-      // Clear feedback after 3 seconds
       setTimeout(() => {
         setFeedback({ message: "", type: "" });
       }, 3000);
     } catch (error) {
+      console.error("Mood save error:", error);
       setFeedback({
-        message: "Failed to save mood. Please try again.",
+        message: error.response?.data?.error || "Failed to save mood. Please try again.",
         type: "error"
       });
       
@@ -86,7 +123,6 @@ const MoodTracker = () => {
     <div className="p-6 bg-white rounded-lg shadow-md max-w-4xl mx-auto">
       <h2 className="text-xl font-semibold mb-4">📅 Mood Tracker</h2>
       
-      {/* Feedback Message */}
       {feedback.message && (
         <div 
           className={`p-3 mb-4 rounded-md text-white text-center ${
@@ -97,7 +133,6 @@ const MoodTracker = () => {
         </div>
       )}
       
-      {/* Loading indicator */}
       {isLoading && (
         <div className="text-center py-2 mb-4">
           <div className="inline-block animate-spin rounded-full h-6 w-6 border-4 border-pink-300 border-t-pink-600"></div>
@@ -105,13 +140,12 @@ const MoodTracker = () => {
         </div>
       )}
       
-      {/* Calendar */}
       <div className="bg-pastel-pink p-4 rounded-lg">
         <Calendar
           value={selectedDate}
           onChange={setSelectedDate}
           tileContent={({ date }) => {
-            const formattedDate = date.toISOString().split("T")[0];
+            const formattedDate = formatDateForAPI(date);
             if (moodData[formattedDate]) {
               return (
                 <div className="text-xl">
@@ -125,7 +159,6 @@ const MoodTracker = () => {
         />
       </div>
       
-      {/* Mood Selection */}
       <div className="mt-6 p-4 bg-yellow-50 rounded-lg">
         <h3 className="text-lg font-medium mb-3">How are you feeling on {selectedDate.toDateString()}?</h3>
         <div className="flex flex-wrap gap-4 justify-center mt-2">
@@ -148,13 +181,12 @@ const MoodTracker = () => {
         </div>
       </div>
       
-      {/* Current mood display */}
-      {moodData[selectedDate.toISOString().split("T")[0]] && (
+      {moodData[formatDateForAPI(selectedDate)] && (
         <div className="mt-4 p-3 bg-white border border-gray-200 rounded-lg text-center">
           <p className="font-medium">
             Your mood for {selectedDate.toDateString()} is: 
             <span className="text-2xl ml-2">
-              {moodData[selectedDate.toISOString().split("T")[0]].emoji}
+              {moodData[formatDateForAPI(selectedDate)].emoji}
             </span>
           </p>
         </div>
