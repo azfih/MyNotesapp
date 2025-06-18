@@ -17,6 +17,7 @@ const MoodTracker = () => {
   const [moodData, setMoodData] = useState({});
   const [feedback, setFeedback] = useState({ message: "", type: "" });
   const [isLoading, setIsLoading] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   
   const { token } = useAuth();
 
@@ -119,6 +120,69 @@ const MoodTracker = () => {
     }
   };
 
+  const handleMoodDelete = async () => {
+    if (!token) {
+      setFeedback({
+        message: "Please log in to delete your mood.",
+        type: "error"
+      });
+      return;
+    }
+
+    const formattedDate = formatDateForAPI(selectedDate);
+    
+    // Check if there's a mood to delete
+    if (!moodData[formattedDate]) {
+      setFeedback({
+        message: "No mood found for this date to delete.",
+        type: "error"
+      });
+      return;
+    }
+
+    // Confirm deletion
+    if (!window.confirm(`Are you sure you want to delete your mood for ${selectedDate.toDateString()}?`)) {
+      return;
+    }
+
+    setIsDeleting(true);
+    
+    // Store the mood data for potential rollback
+    const deletedMood = moodData[formattedDate];
+    
+    try {
+      // Optimistically update local state
+      setMoodData((prev) => {
+        const newData = { ...prev };
+        delete newData[formattedDate];
+        return newData;
+      });
+      
+      // Send delete request to backend
+      await apiClient.delete(`/moods/${formattedDate}`);
+      
+      setFeedback({
+        message: `Mood deleted for ${selectedDate.toDateString()}!`,
+        type: "success"
+      });
+      
+      setTimeout(() => {
+        setFeedback({ message: "", type: "" });
+      }, 3000);
+    } catch (error) {
+      console.error("Mood delete error:", error);
+      setFeedback({
+        message: error.response?.data?.error || "Failed to delete mood. Please try again.",
+        type: "error"
+      });
+      
+      // Rollback the optimistic update
+      setMoodData((prev) => ({ ...prev, [formattedDate]: deletedMood }));
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
   return (
     <div className="p-6 bg-white rounded-lg shadow-md max-w-4xl mx-auto">
       <h2 className="text-xl font-semibold mb-4">📅 Mood Tracker</h2>
@@ -133,10 +197,10 @@ const MoodTracker = () => {
         </div>
       )}
       
-      {isLoading && (
+      {(isLoading || isDeleting) && (
         <div className="text-center py-2 mb-4">
           <div className="inline-block animate-spin rounded-full h-6 w-6 border-4 border-pink-300 border-t-pink-600"></div>
-          <span className="ml-2">Loading...</span>
+          <span className="ml-2">{isDeleting ? "Deleting..." : "Loading..."}</span>
         </div>
       )}
       
@@ -169,10 +233,10 @@ const MoodTracker = () => {
               className="p-4 rounded-lg text-2xl shadow-md hover:shadow-lg transition duration-300 flex flex-col items-center"
               style={{ 
                 backgroundColor: mood.color,
-                opacity: isLoading ? 0.7 : 1,
-                cursor: isLoading ? "not-allowed" : "pointer"
+                opacity: (isLoading || isDeleting) ? 0.7 : 1,
+                cursor: (isLoading || isDeleting) ? "not-allowed" : "pointer"
               }}
-              disabled={isLoading}
+              disabled={isLoading || isDeleting}
             >
               <span className="text-3xl mb-1">{mood.emoji}</span>
               <span className="text-sm font-medium text-gray-800">{mood.label}</span>
@@ -182,13 +246,31 @@ const MoodTracker = () => {
       </div>
       
       {moodData[formatDateForAPI(selectedDate)] && (
-        <div className="mt-4 p-3 bg-white border border-gray-200 rounded-lg text-center">
-          <p className="font-medium">
-            Your mood for {selectedDate.toDateString()} is: 
-            <span className="text-2xl ml-2">
-              {moodData[formatDateForAPI(selectedDate)].emoji}
-            </span>
-          </p>
+        <div className="mt-4 p-3 bg-white border border-gray-200 rounded-lg">
+          <div className="flex items-center justify-between">
+            <p className="font-medium">
+              Your mood for {selectedDate.toDateString()} is: 
+              <span className="text-2xl ml-2">
+                {moodData[formatDateForAPI(selectedDate)].emoji}
+              </span>
+            </p>
+            <button
+              onClick={handleMoodDelete}
+              disabled={isDeleting || isLoading}
+              className="px-4 py-2 bg-red-500 text-white rounded-md hover:bg-red-600 transition duration-300 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+            >
+              {isDeleting ? (
+                <>
+                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                  Deleting...
+                </>
+              ) : (
+                <>
+                  🗑️ Delete
+                </>
+              )}
+            </button>
+          </div>
         </div>
       )}
     </div>
